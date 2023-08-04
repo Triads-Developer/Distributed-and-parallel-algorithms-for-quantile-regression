@@ -1,0 +1,1 @@
+clang++ -O3 -shared -std=c++17 -fPIC $(python3 -m pybind11 --includes) example.cpp -o qpadmslack$(python3-config --extension-suffix) -Wl,-undefined,dynamic_lookup -I /Library/Frameworks/R.framework/Versions/4.3-arm64/Resources/library/RcppArmadillo/include/
