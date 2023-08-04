@@ -250,8 +250,8 @@ arma::vec betaMCP(arma::vec zmean, arma::vec umean, double pho, double a, double
 //to send in a pointer to the function or the array itself to convert to a
 //arma::mat
 double fullthreadedparaQPADMslackcpp(py::array_t<double> inputx, int K=10, double tau=0.7, string penalty="scad", double a=3.7, double lambda=20, double pho = 5, int maxstep = 1000, double eps = 0.001, bool intercept = false){
-  arma::mat x = readCSV("X");
-  arma::vec y = readCSV("Y");
+  arma::mat x = readCSV("../data/X.backup");
+  arma::vec y = readCSV("../data/Y.backup");
   //calculate the number of rows and columns of the matrix x by using the Rcpp functions .n_rows and .n_cols, and put the obtained values into the newly defined integer variables n and p, respectively
   //note: if the model contains an intercept, we should first insert a column ones into the matrix x (in the left) and then calculate the number of columns of x
   //the integer nk calculated by n/K is then the number of rows of the kth partition of the matrix x
@@ -385,60 +385,8 @@ double fullthreadedparaQPADMslackcpp(py::array_t<double> inputx, int K=10, doubl
   return time; 
 }
 
-double threadedparaQPADMslackcpp(py::array_t<double> inputx, int K=10, double tau=0.7, string penalty="scad", double a=3.7, double lambda=20, double pho = 5, int maxstep = 1000, double eps = 0.001, bool intercept = false){
-
-  arma::mat x = readCSV("X");
-  //calculate the number of rows and columns of the matrix x by using the Rcpp functions .n_rows and .n_cols, and put the obtained values into the newly defined integer variables n and p, respectively
-  //note: if the model contains an intercept, we should first insert a column ones into the matrix x (in the left) and then calculate the number of columns of x
-  //the integer nk calculated by n/K is then the number of rows of the kth partition of the matrix x
-  int n = x.n_rows, nk = n/K;
-  int p = x.n_cols;
-
-  //initialize the variables for recording the computational time of the algorithm
-  double max_prep = 0, time_reduce = 0, max_map = 0, time = 0;
-
-  //variable distance is the distance of the objective at two successive iterations (double), we initialize it by 1
-  //lossini is the objective value in the previous iteration (double)
-  //loss is the objective value in the current iteration (double)
-  double distance = 1, lossini = 0, loss = 0;
-
-  //in updating z, we need to calculate the inversion of K matrices, these matrices are fixed, thus we conduct this process before before implement the iterative algorithm
-  //tmp is a 3-dimensional array, it contains K elements, each element is a p*p matrix, which stores a matrix inversion, we initialize it with zeros
-  //in reality, these matrix inversions can be conducted in parallel, as each inversion only based on a partition of x, here we implement this by a "for" loop, i.e., it is sequential now. This is the first part we want to be parallelized
-  //xk: the kth partition of x (matrix)
-  arma::cube tmp = arma::zeros<arma::cube>(p,p,K);
-  arma::mat partition_tmps[K];
-  std::thread threads[K];
-
-  //record the starting time of the calculation
-  auto start_prep = std::chrono::high_resolution_clock::now();
-  if(nk > p) {
-    for(int k = 0; k < K; k++){
-      arma::mat xk = x.rows(k*nk,k*nk+nk-1);
-      threads[k] = std::thread(invertShortMatrix, xk, p, nk, &partition_tmps[k]);
-    }
-  } else {
-    for(int k = 0; k < K; k++){
-      arma::mat xk = x.rows(k*nk,k*nk+nk-1);
-      threads[k] = std::thread(invertLongMatrix, xk, p, nk, &partition_tmps[k]);
-    }
-  }
-   
-  for(int k = 0; k < K; k++) {
-   threads[k].join();
-   tmp.slice(k) = partition_tmps[k];
-
-   auto finish_prep = std::chrono::high_resolution_clock::now();
-   std::chrono::duration<double> elapsed_prep = finish_prep - start_prep;
-   if(elapsed_prep.count()>max_prep) max_prep = elapsed_prep.count();
-  }
-
-  time = time + max_prep;  
-  return time; 
-}
-
 double paraQPADMslackcpp(py::array_t<double> inputx, int K=10, double tau=0.7, string penalty="scad", double a=3.7, double lambda=20, double pho = 5, int maxstep = 1000, double eps = 0.001, bool intercept = false){
-  arma::mat x = readCSV("X");
+  arma::mat x = readCSV("../data/X.backup");
 
   //calculate the number of rows and columns of the matrix x by using the Rcpp functions .n_rows and .n_cols, and put the obtained values into the newly defined integer variables n and p, respectively
   //note: if the model contains an intercept, we should first insert a column ones into the matrix x (in the left) and then calculate the number of columns of x
@@ -479,161 +427,9 @@ double paraQPADMslackcpp(py::array_t<double> inputx, int K=10, double tau=0.7, s
   return time;
 }
 
-double threadedSansJoinQPADMslackcpp(py::array_t<double> inputx, int K=10, double tau=0.7, string penalty="scad", double a=3.7, double lambda=20, double pho = 5, int maxstep = 1000, double eps = 0.001, bool intercept = false){
-  arma::mat x = readCSV("X");
-  //calculate the number of rows and columns of the matrix x by using the Rcpp functions .n_rows and .n_cols, and put the obtained values into the newly defined integer variables n and p, respectively
-  //note: if the model contains an intercept, we should first insert a column ones into the matrix x (in the left) and then calculate the number of columns of x
-  //the integer nk calculated by n/K is then the number of rows of the kth partition of the matrix x
-  int n = x.n_rows, nk = n/K;
-  int p = x.n_cols;
-
-  //initialize the variables for recording the computational time of the algorithm
-  double max_prep = 0, time_reduce = 0, max_map = 0, time = 0;
-
-  //variable distance is the distance of the objective at two successive iterations (double), we initialize it by 1
-  //lossini is the objective value in the previous iteration (double)
-  //loss is the objective value in the current iteration (double)
-  double distance = 1, lossini = 0, loss = 0;
-
-  //in updating z, we need to calculate the inversion of K matrices, these matrices are fixed, thus we conduct this process before before implement the iterative algorithm
-  //tmp is a 3-dimensional array, it contains K elements, each element is a p*p matrix, which stores a matrix inversion, we initialize it with zeros
-  //in reality, these matrix inversions can be conducted in parallel, as each inversion only based on a partition of x, here we implement this by a "for" loop, i.e., it is sequential now. This is the first part we want to be parallelized
-  //xk: the kth partition of x (matrix)
-  arma::cube tmp = arma::zeros<arma::cube>(p,p,K);
-  arma::mat partition_tmps[K];
-  std::thread threads[K];
-
-  //record the starting time of the calculation
-  auto start_prep = std::chrono::high_resolution_clock::now();
-
-  for(int k = 0; k < K; k++){
-    arma::mat xk = x.rows(k*nk,k*nk+nk-1);
-    if(nk > p)
-      threads[k] = std::thread(invertShortMatrix, xk, p, nk, &partition_tmps[k]);
-    else threads[k] = std::thread(invertLongMatrix, xk, p, nk, &partition_tmps[k]);
-
-    auto finish_prep = std::chrono::high_resolution_clock::now();
-    std::chrono::duration<double> elapsed_prep = finish_prep - start_prep;
-    if(elapsed_prep.count()>max_prep) max_prep = elapsed_prep.count();
-
-  }
-
-  time = time + max_prep;  
-  return time;
-}
-
-//Update from Greg: This is version of the loop also utilizes std::future
-//which can be used alongside std::async to perform async functions which I believe this
-//could be. The tmp list is used towards the end of the loop so I suspect these
-//threads will be completed by the time they are needed. That is an experiment I will try tomorrow
-double asyncQPADMslackcpp(py::array_t<double> inputx, int K=10, double tau=0.7, string penalty="scad", double a=3.7, double lambda=20, double pho = 5, int maxstep = 1000, double eps = 0.001, bool intercept = false){
-  arma::mat x = readCSV("X");
-  //calculate the number of rows and columns of the matrix x by using the Rcpp functions .n_rows and .n_cols, and put the obtained values into the newly defined integer variables n and p, respectively
-  //note: if the model contains an intercept, we should first insert a column ones into the matrix x (in the left) and then calculate the number of columns of x
-  //the integer nk calculated by n/K is then the number of rows of the kth partition of the matrix x
-  int n = x.n_rows, nk = n/K;
-  int p = x.n_cols;
-
-  //initialize the variables for recording the computational time of the algorithm
-  double max_prep = 0, time_reduce = 0, max_map = 0, time = 0;
-
-  //variable distance is the distance of the objective at two successive iterations (double), we initialize it by 1
-  //lossini is the objective value in the previous iteration (double)
-  //loss is the objective value in the current iteration (double)
-  double distance = 1, lossini = 0, loss = 0;
-
-  //in updating z, we need to calculate the inversion of K matrices, these matrices are fixed, thus we conduct this process before before implement the iterative algorithm
-  //tmp is a 3-dimensional array, it contains K elements, each element is a p*p matrix, which stores a matrix inversion, we initialize it with zeros
-  //in reality, these matrix inversions can be conducted in parallel, as each inversion only based on a partition of x, here we implement this by a "for" loop, i.e., it is sequential now. This is the first part we want to be parallelized
-  //xk: the kth partition of x (matrix)
-  arma::cube tmp = arma::zeros<arma::cube>(p,p,K);
-  arma::mat partition_tmps[K];
-  std::future<arma::mat> threads[K];
-
-  //record the starting time of the calculation
-  auto start_prep = std::chrono::high_resolution_clock::now();
-  for(int k = 0; k < K; k++){
-    arma::mat xk = x.rows(k*nk,k*nk+nk-1);
-    if(nk > p)
-      threads[k] = std::async(std::launch::async,asyncinvertShortMatrix, xk, p, nk, &partition_tmps[k]);
-    else threads[k] = std::async(std::launch::async, asyncinvertLongMatrix, xk, p, nk, &partition_tmps[k]);
-  }
-
-  for(int k = 0; k < K; k++) {
-    tmp.slice(k) = threads[k].get();
-  }
-    auto finish_prep = std::chrono::high_resolution_clock::now();
-    std::chrono::duration<double> elapsed_prep = finish_prep - start_prep;
-    if(elapsed_prep.count()>max_prep) max_prep = elapsed_prep.count();
-
-
-    time = time + max_prep;  
-    return time; 
-}
-
-//Update from Greg: This is version of the loop also utilizes std::future
-//much like the .join() being a blocking call. I wanted to see if std::future's
-//.get() could be removed to speed up the process. It doesn't really change all that much
-double asyncSansGetQPADMslackcpp(py::array_t<double> inputx, int K=10, double tau=0.7, string penalty="scad", double a=3.7, double lambda=20, double pho = 5, int maxstep = 1000, double eps = 0.001, bool intercept = false){
-
-  arma::mat x = readCSV("X");
-  //calculate the number of rows and columns of the matrix x by using the Rcpp functions .n_rows and .n_cols, and put the obtained values into the newly defined integer variables n and p, respectively
-  //note: if the model contains an intercept, we should first insert a column ones into the matrix x (in the left) and then calculate the number of columns of x
-  //the integer nk calculated by n/K is then the number of rows of the kth partition of the matrix x
-  int n = x.n_rows, nk = n/K;
-  int p = x.n_cols;
-
-  //initialize the variables for recording the computational time of the algorithm
-  double max_prep = 0, time_reduce = 0, max_map = 0, time = 0;
-
-  //variable distance is the distance of the objective at two successive iterations (double), we initialize it by 1
-  //lossini is the objective value in the previous iteration (double)
-  //loss is the objective value in the current iteration (double)
-  double distance = 1, lossini = 0, loss = 0;
-
-  //in updating z, we need to calculate the inversion of K matrices, these matrices are fixed, thus we conduct this process before before implement the iterative algorithm
-  //tmp is a 3-dimensional array, it contains K elements, each element is a p*p matrix, which stores a matrix inversion, we initialize it with zeros
-  //in reality, these matrix inversions can be conducted in parallel, as each inversion only based on a partition of x, here we implement this by a "for" loop, i.e., it is sequential now. This is the first part we want to be parallelized
-  //xk: the kth partition of x (matrix)
-  arma::cube tmp = arma::zeros<arma::cube>(p,p,K);
-  arma::mat partition_tmps[K];
-  std::future<arma::mat> threads[K];
-
-  //record the starting time of the calculation
-  auto start_prep = std::chrono::high_resolution_clock::now();
-  for(int k = 0; k < K; k++){
-    arma::mat xk = x.rows(k*nk,k*nk+nk-1);
-    if(nk > p)
-      threads[k] = std::async(asyncinvertShortMatrix, xk, p, nk, &partition_tmps[k]);
-    else threads[k] = std::async(asyncinvertLongMatrix, xk, p, nk, &partition_tmps[k]);
-  }
-
-
-  auto finish_prep = std::chrono::high_resolution_clock::now();
-  std::chrono::duration<double> elapsed_prep = finish_prep - start_prep;
-  if(elapsed_prep.count()>max_prep) max_prep = elapsed_prep.count();
-
-  time = time + max_prep;  
-  return time; 
-}
-
-int add(int i, int j) {
-    return i + j;
-}
-
 PYBIND11_MODULE(qpadmslack, m) {
     m.doc() = "pybind11 qpadmslack plugin"; //option module docstring
 
     m.def("paraQPADMslackcpp", paraQPADMslackcpp, "a function that will create the basic the temp arrays");
-    m.def("threadedparaQPADMslackcpp",  threadedparaQPADMslackcpp, "a function that will create the basic the temp arrays");
-    m.def("threadedSansJoinQPADMslackcpp", threadedSansJoinQPADMslackcpp, "a function that will create the basic the temp arrays");
-    m.def("asyncSansGetQPADMslackcpp", asyncSansGetQPADMslackcpp, "a function that will create the basic the temp arrays");
-    m.def("asyncQPADMslackcpp", asyncQPADMslackcpp, "a function that will create the basic the temp arrays");
     m.def("fullthreadedparaQPADMslackcpp",  fullthreadedparaQPADMslackcpp, "a function that will create the basic the temp arrays");
-
-    m.def("add", &add, "A function that adds two numbers");
-
-    m.attr("the_answer") = 42;
-    py::object world = py::cast("World");
-    m.attr("what") = world;
 }

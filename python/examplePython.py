@@ -5,25 +5,6 @@ import concurrent.futures
 import numpy as np
 from scipy.sparse import linalg as sla
 
-def writeFiles(fileName) :
-    qpadmslack.writeFiles(fileName)
-    return 'Task is done'
-
-#currently this function is not being used
-def gcov(p, rho) :
-  #cov = np.matrix(1, p, p)
-  cov = [[column for column in range(p)] for row in range(p)]
-  for i in range(p) :
-    for j in range(p) :
-        if(i < j):
-            print(i)
-            cov[i,j] = rho^{j-i}
-        else:
-            print(i)
-            cov[i,j] = cov[j,i]
-    
-  return cov
-
 def main():
     N = 100000
     p = 100
@@ -40,7 +21,8 @@ def main():
     ##AE and Time respectively record the estimation accuracy and computational time (pseudo-parallel) of the algorithm under different K
     testxk = AE = Time = [0] * len(K)
 
-    #X = np.array(np.loadtxt("X", delimiter=",", dtype="float32"))
+    #This is loading the file in instead of generating the data
+    #X = np.array(np.loadtxt("../data/X.backup", delimiter=",", dtype="float32"))
 
     #para= qpadmslack.paraQPADMslackcpp(X,K[2],tau,"scad",a,lamb[2],pho,1000,0.001,False)
     threadedPara = qpadmslack.threadedparaQPADMslackcpp(X,K[2],tau,"scad",a,lamb[2],pho,1000,0.001,False)
