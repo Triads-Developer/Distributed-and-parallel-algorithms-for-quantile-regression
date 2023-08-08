@@ -250,8 +250,8 @@ arma::vec betaMCP(arma::vec zmean, arma::vec umean, double pho, double a, double
 //to send in a pointer to the function or the array itself to convert to a
 //arma::mat
 double fullthreadedparaQPADMslackcpp(py::array_t<double> inputx, int K=10, double tau=0.7, string penalty="scad", double a=3.7, double lambda=20, double pho = 5, int maxstep = 1000, double eps = 0.001, bool intercept = false){
-  arma::mat x = readCSV("../data/X.backup");
-  arma::vec y = readCSV("../data/Y.backup");
+  arma::mat x = readCSV("../data/X");
+  arma::vec y = readCSV("../data/Y");
   //calculate the number of rows and columns of the matrix x by using the Rcpp functions .n_rows and .n_cols, and put the obtained values into the newly defined integer variables n and p, respectively
   //note: if the model contains an intercept, we should first insert a column ones into the matrix x (in the left) and then calculate the number of columns of x
   //the integer nk calculated by n/K is then the number of rows of the kth partition of the matrix x
@@ -305,7 +305,6 @@ double fullthreadedparaQPADMslackcpp(py::array_t<double> inputx, int K=10, doubl
     }
   }
   
-  cout << "\nPrepping the partitions\n";
   for(int k = 0; k < K; k++) {
    threads[k].join();
    tmp.slice(k) = partition_tmps[k];
@@ -319,7 +318,6 @@ double fullthreadedparaQPADMslackcpp(py::array_t<double> inputx, int K=10, doubl
 
   int iteration = 0;
 
-  cout << "Beginning main loop\n";
   //the specific implementation of QPADM-slack
   while(((distance > eps)|(distance == 0))&&(iteration < maxstep)){
     //update beta (for details see the slides)
@@ -344,9 +342,11 @@ double fullthreadedparaQPADMslackcpp(py::array_t<double> inputx, int K=10, doubl
     //update xi, eta, z, u and v (see details in the slides), this is the second part we want to be parallelized
     for(int k = 0; k < K; k++){
       start_map = std::chrono::high_resolution_clock::now();
+
       map_threads[k] = std::thread(calculateAndUpdateValues,
               &x,
               &y,
+              &yx,
               &xi,
               &vini,
               &eta,
@@ -358,6 +358,7 @@ double fullthreadedparaQPADMslackcpp(py::array_t<double> inputx, int K=10, doubl
               &uini,
               &beta,
               k, nk, n, pho, tau);
+            
     }
 
     for(int k = 0; k < K; k++) {
@@ -379,9 +380,10 @@ double fullthreadedparaQPADMslackcpp(py::array_t<double> inputx, int K=10, doubl
     iteration = iteration+1;
   }  
 
-  //arma::vec estimates_from_r = readCSV("estimates");
+  //arma::vec estimates_from_r = readCSV("../data/estimates_k"+ std::to_string(K));
   //compare to beta
-  //cout << arma::approx_equal(estimates_from_r, beta, "absdiff", 0.01) << " approx_equal";
+  //cout << "\n" << arma::approx_equal(estimates_from_r, beta, "absdiff", 0.01) << " approx_equal for K " << K << "\n";
+  cout << "\n" << time << " with that as the time\n";
   return time; 
 }
 
