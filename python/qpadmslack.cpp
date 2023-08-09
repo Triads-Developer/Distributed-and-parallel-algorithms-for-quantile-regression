@@ -44,29 +44,14 @@ void calculateAndUpdateValues(arma::mat *x,
       arma::vec yk = y->subvec(nk*k, nk*k+nk-1), vinik = vini->subvec(nk*k, nk*k+nk-1), etainik = etaini->subvec(k*nk,k*nk+nk-1);
 
       xi->subvec(k*nk,k*nk+nk-1) = yx->subvec(k*nk,k*nk+nk-1)+etainik+vinik/pho-tau*arma::ones(nk)/(n*pho);
-    
-      xi->subvec(k*nk,k*nk+nk-1).clean(0);
 
-      //Could we use xi.clean(0) here? -> https://arma.sourceforge.net/docs.html#clean
-        /* 
-      for(int i = k*nk; i<k*nk+nk; i++){
-        if(xi(i) < 0){
-          xi(i) = 0;
-        }
-      }
-      */
-
+      //I believe this is the shorthand for the original loop
+      xi->subvec(k*nk,k*nk+nk-1).for_each( [](mat::elem_type& val) { val = val < 0 ? 0 : val; } );
+      
       //update eta
       eta->subvec(k*nk,k*nk+nk-1) = -yx->subvec(k*nk,k*nk+nk-1)+xi->subvec(k*nk,k*nk+nk-1)-vinik/pho-(1-tau)*arma::ones(nk)/(n*pho);
-      eta->subvec(k*nk,k*nk+nk-1).clean(0);
 
-      //Could we use eta.clean(0) here? -> https://arma.sourceforge.net/docs.html#clean
-      /*
-      for(int i = k*nk; i < k*nk+nk; i++){
-        if(eta(i) < 0){
-          eta(i) = 0;
-        }
-      }*/
+      eta->subvec(k*nk,k*nk+nk-1).for_each( [](mat::elem_type& val) { val = val < 0 ? 0 : val; } );
 
       //update z
       z->col(k) = tmp->slice(k)*(*beta-uini->col(k)/pho+xk.t()*(yk-xi->subvec(k*nk,k*nk+nk-1)+eta->subvec(k*nk,k*nk+nk-1)+vinik/pho));
@@ -250,8 +235,8 @@ arma::vec betaMCP(arma::vec zmean, arma::vec umean, double pho, double a, double
 //to send in a pointer to the function or the array itself to convert to a
 //arma::mat
 double fullthreadedparaQPADMslackcpp(py::array_t<double> inputx, int K=10, double tau=0.7, string penalty="scad", double a=3.7, double lambda=20, double pho = 5, int maxstep = 1000, double eps = 0.001, bool intercept = false){
-  arma::mat x = readCSV("../data/X");
-  arma::vec y = readCSV("../data/Y");
+  arma::mat x = readCSV("../data/X_base");
+  arma::vec y = readCSV("../data/Y_base");
   //calculate the number of rows and columns of the matrix x by using the Rcpp functions .n_rows and .n_cols, and put the obtained values into the newly defined integer variables n and p, respectively
   //note: if the model contains an intercept, we should first insert a column ones into the matrix x (in the left) and then calculate the number of columns of x
   //the integer nk calculated by n/K is then the number of rows of the kth partition of the matrix x
@@ -380,10 +365,10 @@ double fullthreadedparaQPADMslackcpp(py::array_t<double> inputx, int K=10, doubl
     iteration = iteration+1;
   }  
 
-  //arma::vec estimates_from_r = readCSV("../data/estimates_k"+ std::to_string(K));
-  //compare to beta
+  //compare to beta to the saved R script
+  //arma::vec estimates_from_r = readCSV("../data/beta_" + std::to_string(K) +"_base");
   //cout << "\n" << arma::approx_equal(estimates_from_r, beta, "absdiff", 0.01) << " approx_equal for K " << K << "\n";
-  cout << "\n" << time << " with that as the time\n";
+  //cout << "\n" << time << " with that as the time\n";
   return time; 
 }
 
