@@ -1,11 +1,27 @@
 import qpadmslack
+import sys, getopt
 import time
 import random
 import concurrent.futures
 import numpy as np
 from scipy.sparse import linalg as sla
 
-def main():
+def main(argv):
+    try:
+        opts, args = getopt.getopt(argv,"hx:y:",["xfile=, yfile="])
+    except getopt.GetoptError:
+        print ('python-qpadmslack.py -x <inputXfile> -y <inputY>')
+        sys.exit(2)
+
+    for opt, arg in opts:
+        if opt == '-h':
+            print ('python-qpadmslack.py -x <inputXfile> -y <inputY>')
+            sys.exit()
+        elif opt in ("-x", "--xfile"):
+            pathToX = arg
+        elif opt in ("-y", "--yfile"):
+            pathToY = arg
+
     N = 100000
     p = 100
     tau = 0.7
@@ -25,9 +41,10 @@ def main():
     testxk = AE = Time = [0] * len(K)
 
     start = time.perf_counter()
-    fullthreadedPara = qpadmslack.fullthreadedparaQPADMslackcpp([1.2,3.2,0.2345],100,tau,"scad",a,200,pho,1000,0.001,False)
+    fullthreadedPara = qpadmslack.fullthreadedparaQPADMslackcpp(pathToX, pathToY, [1.2,3.2,0.2345],100,tau,"scad",a,200,pho,1000,0.001,False)
     end = time.perf_counter()
-    print(f'The threaded Python call with a large input finished in {round(end-start, 2)} second(s) with a K value of 100 ')
+    print(f'The threaded Python call with an input finished in {round(end-start, 2)} second(s) with a K value of 100 ')
+
     #This is loading the file in instead of generating the data
     #X = np.array(np.loadtxt("../data/X.backup", delimiter=",", dtype="float32"))
    
@@ -41,4 +58,4 @@ def main():
     #fullthreadedPara = qpadmslack.fullthreadedparaQPADMslackcpp(X,K[2],tau,"scad",a,lamb[2],pho,1000,0.001,False)
     #print("fullthreaded version " , fullthreadedPara)
 if __name__ == '__main__':
-    main()
+    main(sys.argv[1:])
