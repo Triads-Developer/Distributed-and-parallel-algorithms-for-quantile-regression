@@ -9,6 +9,9 @@ from scipy.sparse import linalg as sla
 def main(argv):
     try:
         opts, args = getopt.getopt(argv,"hx:y:",["xfile=, yfile="])
+        if len(opts) == 0:
+            print ('python-qpadmslack.py -x <inputXfile> -y <inputY>')
+            sys.exit(2)
     except getopt.GetoptError:
         print ('python-qpadmslack.py -x <inputXfile> -y <inputY>')
         sys.exit(2)
