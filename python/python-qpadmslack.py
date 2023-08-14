@@ -40,22 +40,8 @@ def main(argv):
     ##AE and Time respectively record the estimation accuracy and computational time (pseudo-parallel) of the algorithm under different K
     testxk = AE = Time = [0] * len(K)
 
-    start = time.perf_counter()
     fullthreadedPara = qpadmslack.fullthreadedparaQPADMslackcpp(pathToX, pathToY, [1.2,3.2,0.2345],100,tau,"scad",a,200,pho,1000,0.001,False)
-    end = time.perf_counter()
-    print(f'The threaded Python call with an input finished in {round(end-start, 2)} second(s) with a K value of 100 ')
+    print(f'The threaded Python call with an input finished in {fullthreadedPara[0]} second(s) with a K value of 100 ')
 
-    #This is loading the file in instead of generating the data
-    #X = np.array(np.loadtxt("../data/X.backup", delimiter=",", dtype="float32"))
-   
-    #for k in range(len(K)):
-    #    start = time.perf_counter()
-    #    fullthreadedPara = qpadmslack.fullthreadedparaQPADMslackcpp([1.2,3.2,0.2345],K[k],tau,"scad",a,lamb[k],pho,1000,0.001,False)
-    #    end = time.perf_counter()
-    #    print(f'The threaded Python call with a large input finished in {round(end-start, 2)} second(s) with a K value of {K[k]}')
-  
-    #para= qpadmslack.paraQPADMslackcpp(X,K[2],tau,"scad",a,lamb[2],pho,1000,0.001,False)
-    #fullthreadedPara = qpadmslack.fullthreadedparaQPADMslackcpp(X,K[2],tau,"scad",a,lamb[2],pho,1000,0.001,False)
-    #print("fullthreaded version " , fullthreadedPara)
 if __name__ == '__main__':
     main(sys.argv[1:])

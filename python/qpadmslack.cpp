@@ -1,5 +1,7 @@
+#include <carma>
 #include <pybind11/pybind11.h>
 #include <pybind11/numpy.h>
+#include <pybind11/pytypes.h>
 #include <armadillo>
 #include <math.h>
 #include <thread>
@@ -234,7 +236,7 @@ arma::vec betaMCP(arma::vec zmean, arma::vec umean, double pho, double a, double
 //the inputx parameter here is just a placeholder until I can figure out how
 //to send in a pointer to the function or the array itself to convert to a
 //arma::mat
-double fullthreadedparaQPADMslackcpp(string pathToX, string pathToY, py::array_t<double> inputx, int K=10, double tau=0.7, string penalty="scad", double a=3.7, double lambda=20, double pho = 5, int maxstep = 1000, double eps = 0.001, bool intercept = false){
+py::tuple fullthreadedparaQPADMslackcpp(string pathToX, string pathToY, py::array_t<double> inputx, int K=10, double tau=0.7, string penalty="scad", double a=3.7, double lambda=20, double pho = 5, int maxstep = 1000, double eps = 0.001, bool intercept = false){
   arma::mat x = readCSV(pathToX);
   arma::vec y = readCSV(pathToY);
   //calculate the number of rows and columns of the matrix x by using the Rcpp functions .n_rows and .n_cols, and put the obtained values into the newly defined integer variables n and p, respectively
@@ -364,16 +366,16 @@ double fullthreadedparaQPADMslackcpp(string pathToX, string pathToY, py::array_t
     lossini = loss, zini = z, uini = u, etaini = eta, vini=v;
     iteration = iteration+1;
   }  
-
   //compare to beta to the saved R script
   //arma::vec estimates_from_r = readCSV("../data/beta_" + std::to_string(K) +"_base");
   //cout << "\n" << arma::approx_equal(estimates_from_r, beta, "absdiff", 0.01) << " approx_equal for K " << K << "\n";
   //cout << "\n" << time << " with that as the time\n";
-  return time; 
+
+  return py::make_tuple(time, carma::mat_to_arr(beta, true), iteration);
 }
 
 double paraQPADMslackcpp(py::array_t<double> inputx, int K=10, double tau=0.7, string penalty="scad", double a=3.7, double lambda=20, double pho = 5, int maxstep = 1000, double eps = 0.001, bool intercept = false){
-  arma::mat x = readCSV("../data/X.backup");
+  arma::mat x = readCSV("../data/X.small");
 
   //calculate the number of rows and columns of the matrix x by using the Rcpp functions .n_rows and .n_cols, and put the obtained values into the newly defined integer variables n and p, respectively
   //note: if the model contains an intercept, we should first insert a column ones into the matrix x (in the left) and then calculate the number of columns of x
@@ -414,9 +416,17 @@ double paraQPADMslackcpp(py::array_t<double> inputx, int K=10, double tau=0.7, s
   return time;
 }
 
+py::tuple matrixReturnTest(){
+    arma::mat x = readCSV("../data/X.small");
+
+    // convert to Numpy array and copy out
+    return py::make_tuple("123", carma::mat_to_arr(x, true));
+}
+
 PYBIND11_MODULE(qpadmslack, m) {
     m.doc() = "pybind11 qpadmslack plugin"; //option module docstring
 
     m.def("paraQPADMslackcpp", paraQPADMslackcpp, "a function that will create the basic the temp arrays");
     m.def("fullthreadedparaQPADMslackcpp",  fullthreadedparaQPADMslackcpp, "a function that will create the basic the temp arrays");
+    m.def("matrixReturnTest", matrixReturnTest, "this is a test to see how to return a matrix to Python");
 }
