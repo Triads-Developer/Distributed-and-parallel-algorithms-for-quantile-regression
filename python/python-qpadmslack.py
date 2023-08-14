@@ -11,7 +11,6 @@ def main(argv):
         opts, args = getopt.getopt(argv,"hx:y:",["xfile=, yfile="])
         if len(opts) == 0:
             print ('python-qpadmslack.py -x <inputXfile> -y <inputY>')
-            sys.exit(2)
     except getopt.GetoptError:
         print ('python-qpadmslack.py -x <inputXfile> -y <inputY>')
         sys.exit(2)
@@ -24,6 +23,15 @@ def main(argv):
             pathToX = arg
         elif opt in ("-y", "--yfile"):
             pathToY = arg
+
+   
+   #this is just a default value for X and Y's path - it's more just
+   #convencience for me and testing
+    try: pathToX
+    except NameError: pathToX = "../data/X.small"
+
+    try: pathToY
+    except NameError: pathToY = "../data/Y.small"
 
     N = 100000
     p = 100
