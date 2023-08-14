@@ -236,7 +236,7 @@ arma::vec betaMCP(arma::vec zmean, arma::vec umean, double pho, double a, double
 //the inputx parameter here is just a placeholder until I can figure out how
 //to send in a pointer to the function or the array itself to convert to a
 //arma::mat
-py::tuple fullthreadedparaQPADMslackcpp(string pathToX, string pathToY, py::array_t<double> inputx, int K=10, double tau=0.7, string penalty="scad", double a=3.7, double lambda=20, double pho = 5, int maxstep = 1000, double eps = 0.001, bool intercept = false){
+py::tuple fullthreadedparaQPADMslackcpp(string pathToX, string pathToY, int K=10, double tau=0.7, string penalty="scad", double a=3.7, double lambda=20, double pho = 5, int maxstep = 1000, double eps = 0.001, bool intercept = false){
   arma::mat x = readCSV(pathToX);
   arma::vec y = readCSV(pathToY);
   //calculate the number of rows and columns of the matrix x by using the Rcpp functions .n_rows and .n_cols, and put the obtained values into the newly defined integer variables n and p, respectively

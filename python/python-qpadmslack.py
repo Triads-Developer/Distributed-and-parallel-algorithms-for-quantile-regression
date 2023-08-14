@@ -43,8 +43,9 @@ def main(argv):
     ##AE and Time respectively record the estimation accuracy and computational time (pseudo-parallel) of the algorithm under different K
     testxk = AE = Time = [0] * len(K)
 
-    fullthreadedPara = qpadmslack.fullthreadedparaQPADMslackcpp(pathToX, pathToY, [1.2,3.2,0.2345],100,tau,"scad",a,200,pho,1000,0.001,False)
-    print(f'The threaded Python call with an input finished in {fullthreadedPara[0]} second(s) with a K value of 100 ')
+    fullthreadedPara = qpadmslack.fullthreadedparaQPADMslackcpp(pathToX, pathToY, 100,tau,"scad",a,200,pho,1000,0.001,False)
+    print(f'The threaded Python call with an input finished in {fullthreadedPara[0]} second(s) with a K value of 100\n')
+    print(f'The threaded Python call with an input finished in {fullthreadedPara[2]} iterations with a K value of 100\n ')
 
 if __name__ == '__main__':
     main(sys.argv[1:])
