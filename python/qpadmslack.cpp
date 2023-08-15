@@ -284,21 +284,23 @@ py::tuple fullthreadedparaQPADMslackcpp(string pathToX, string pathToY, int K=10
     for(int k = 0; k < K; k++){
       arma::mat xk = x.rows(k*nk,k*nk+nk-1);
       threads[k] = std::thread(invertShortMatrix, xk, p, nk, &partition_tmps[k]);
+       auto finish_prep = std::chrono::high_resolution_clock::now();
+      std::chrono::duration<double> elapsed_prep = finish_prep - start_prep;
+      if(elapsed_prep.count()>max_prep) max_prep = elapsed_prep.count();
     }
   } else {
     for(int k = 0; k < K; k++){
       arma::mat xk = x.rows(k*nk,k*nk+nk-1);
       threads[k] = std::thread(invertLongMatrix, xk, p, nk, &partition_tmps[k]);
+       auto finish_prep = std::chrono::high_resolution_clock::now();
+      std::chrono::duration<double> elapsed_prep = finish_prep - start_prep;
+      if(elapsed_prep.count()>max_prep) max_prep = elapsed_prep.count();
     }
   }
   
   for(int k = 0; k < K; k++) {
    threads[k].join();
    tmp.slice(k) = partition_tmps[k];
-
-   auto finish_prep = std::chrono::high_resolution_clock::now();
-   std::chrono::duration<double> elapsed_prep = finish_prep - start_prep;
-   if(elapsed_prep.count()>max_prep) max_prep = elapsed_prep.count();
   }
 
   time = time + max_prep;  
