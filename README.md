@@ -17,6 +17,7 @@ the algorithm.
 Once these areas were identified, the question became, what is the most
 effective way, given time, system, and flexibility constraints to speed up the
 processing.  
+
 As the core functionality of the algorithm was written in C++, that was the
 first target. Additionally, the optimization provided by C++'s compilation optimization and Armadillo made it a more efficient solution rather than rewriting the algorithm in R or C++. 
 We accomplished a C++ focused performance gain, by changing the iterative processing into a
@@ -24,6 +25,7 @@ series of multi-threaded function calls where the number of threads is equal to 
 
 The next step was to determine if there would be a major performance gain by
 exporting the C++ algorithm to Python vs R.
+
 In a side-by-side comparison, with a large input (16Gb csv), R finishes in
 roughly 70 minutes whereas Python finished in roughly 16 minutes.
 
@@ -32,6 +34,10 @@ creates an inherent bottleneck. There may be some libraries that we could
 employ like Snow which could avoid or minimize this bottleneck, but the initial
 performance boost provided by Python is remarkable.
 
+In the R implementation of this algorithm, Rcpp is used to export the C++
+function into R. In Python, the equivalent functionality is achieved with
+Pybind11.
+
 # Testing
 In terms of testing, I ran the original implementation and exported the results (Beta) to a file. In the new Python/C++, that file was read and compared to the results generated Beta. 
 
@@ -39,7 +45,7 @@ In terms of testing, I ran the original implementation and exported the results 
 I compiled the C++ with the following command:
 clang++ -O3 -shared -std=c++17 -fPIC $(python3 -m pybind11 --includes) qpadmslack.cpp -o qpadmslack$(python3-config --extension-suffix) -Wl,-undefined,dynamic_lookup -I /Library/Frameworks/R.framework/Versions/4.3-arm64/Resources/library/RcppArmadillo/include/ -I /usr/local/include/carma/ -I /opt/homebrew/lib/python3.11/site-packages/numpy/core/include
 
-# Couple notes on compliation 
+# Couple notes on compilation 
 I manually included 3 libraries which may differ in your
 system: Armadillo (here I just used the Armadillo provided by R), Carma (to
 translate from C++ to Python), and Numpy.
@@ -67,3 +73,13 @@ Time - this is the C++ clock of the time to process the input
 Beta - a matrix containing Beta
 Iterations - the number of iterations required by the algorithm
 
+#Potential points of change
+The current input matrix X is to be read in - we might want to overload the
+function to accept an input matrix
+
+#Some related resources
+https://github.com/RUrlus/carma
+https://pybind11.readthedocs.io/en/stable/index.html
+https://arma.sourceforge.net/docs.html
+https://pyarma.sourceforge.io/docs.html#part_gen
+https://cran.rstudio.com/web/packages/RcppArmadillo/index.html
