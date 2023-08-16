@@ -62,6 +62,12 @@ python3 python-qpadmslack.py -x <path_to_input_file_X> -y <path_to_input_file_Y>
 You can also run with a -h flag to see a reminder too.
 python3 python-qpadmslack.py -h
 
+In order to generate a test input array, modify N and p in the
+R/TmpMatrixSetup.R
+
+This will create two input files called X and Y these can be moved or referenced
+when calling the above python script.
+
 #Input
 The input to this script are two files, X and Y. These files are exported matrices, X and Y, which are generated in the original R script.
 The Python script could be made to generate the matrices but, for the time
