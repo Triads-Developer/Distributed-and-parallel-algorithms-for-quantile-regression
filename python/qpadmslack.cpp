@@ -11,15 +11,6 @@ namespace py = pybind11;
 using namespace arma;
 using namespace std;
 
-struct buffer_info {
-    void *ptr;
-    size_t itemsize;
-    std::string format;
-    int ndim;
-    std::vector<size_t> shape;
-    std::vector<size_t> strides;
-};
-
 void invertLongMatrix(arma::mat xk, int p, int nk, arma::mat *tmp){
   *tmp = arma::eye(p,p)-xk.t()*inv(arma::eye(nk,nk)+xk*xk.t())*xk;
 }
@@ -236,9 +227,21 @@ arma::vec betaMCP(arma::vec zmean, arma::vec umean, double pho, double a, double
 //the inputx parameter here is just a placeholder until I can figure out how
 //to send in a pointer to the function or the array itself to convert to a
 //arma::mat
-py::tuple fullthreadedparaQPADMslackcpp(string pathToX, string pathToY, int K=10, double tau=0.7, string penalty="scad", double a=3.7, double lambda=20, double pho = 5, int maxstep = 1000, double eps = 0.001, bool intercept = false){
+py::tuple fullthreadedparaQPADMslackcpp(string pathToX, string pathToY, int K=10, double tau=0.7, string penalty="scad", double a=3.7, double lambda=20, double pho = 5, int maxstep = 1000, double eps = 0.001, bool intercept = false, bool save_beta_history = false){
+  
+  //initialize the variables for recording the computational time of the algorithm
+  double max_prep = 0, time_reduce = 0, max_map = 0, time = 0, time_inversion = 0, time_loading_data = 0, time_iterations = 0, time_total = 0;
+  arma::vec map(K, fill::zeros);
+  
+  auto start_total_time = std::chrono::high_resolution_clock::now();
+  auto start_reading_data = std::chrono::high_resolution_clock::now();
   arma::mat x = readCSV(pathToX);
   arma::vec y = readCSV(pathToY);
+  
+  auto finish_reading_data = std::chrono::high_resolution_clock::now();
+  std::chrono::duration<double> elapsed_reading_data = finish_reading_data - start_reading_data;
+  time_loading_data = elapsed_reading_data.count();
+
   //calculate the number of rows and columns of the matrix x by using the Rcpp functions .n_rows and .n_cols, and put the obtained values into the newly defined integer variables n and p, respectively
   //note: if the model contains an intercept, we should first insert a column ones into the matrix x (in the left) and then calculate the number of columns of x
   //the integer nk calculated by n/K is then the number of rows of the kth partition of the matrix x
@@ -254,13 +257,14 @@ py::tuple fullthreadedparaQPADMslackcpp(string pathToX, string pathToY, int K=10
   arma::vec beta(p, fill::zeros), xi(n, fill::zeros), eta(n, fill::zeros), v(n, fill::zeros);
   arma::vec zmean(p, fill::zeros), umean(p, fill::zeros);
   arma::vec yx = y;
+ 
+  //this is to save each iterations of beta but it won't actually be populated
+  //unless the flag it set to true
+  arma::cube beta_history;
+
   //divide the values of lambda and pho given by users by n to adjust them to the appropriate order 
   lambda = lambda/n, pho = pho/n;
-  
-  //initialize the variables for recording the computational time of the algorithm
-  double max_prep = 0, time_reduce = 0, max_map = 0, time = 0;
-  arma::vec map(K, fill::zeros);
-  
+ 
   //variable distance is the distance of the objective at two successive iterations (double), we initialize it by 1
   //lossini is the objective value in the previous iteration (double)
   //loss is the objective value in the current iteration (double)
@@ -284,7 +288,7 @@ py::tuple fullthreadedparaQPADMslackcpp(string pathToX, string pathToY, int K=10
     for(int k = 0; k < K; k++){
       arma::mat xk = x.rows(k*nk,k*nk+nk-1);
       threads[k] = std::thread(invertShortMatrix, xk, p, nk, &partition_tmps[k]);
-       auto finish_prep = std::chrono::high_resolution_clock::now();
+      auto finish_prep = std::chrono::high_resolution_clock::now();
       std::chrono::duration<double> elapsed_prep = finish_prep - start_prep;
       if(elapsed_prep.count()>max_prep) max_prep = elapsed_prep.count();
     }
@@ -292,7 +296,7 @@ py::tuple fullthreadedparaQPADMslackcpp(string pathToX, string pathToY, int K=10
     for(int k = 0; k < K; k++){
       arma::mat xk = x.rows(k*nk,k*nk+nk-1);
       threads[k] = std::thread(invertLongMatrix, xk, p, nk, &partition_tmps[k]);
-       auto finish_prep = std::chrono::high_resolution_clock::now();
+      auto finish_prep = std::chrono::high_resolution_clock::now();
       std::chrono::duration<double> elapsed_prep = finish_prep - start_prep;
       if(elapsed_prep.count()>max_prep) max_prep = elapsed_prep.count();
     }
@@ -304,8 +308,11 @@ py::tuple fullthreadedparaQPADMslackcpp(string pathToX, string pathToY, int K=10
   }
 
   time = time + max_prep;  
+  time_inversion = time; 
 
   int iteration = 0;
+
+  auto start_iterations = std::chrono::high_resolution_clock::now();
 
   //the specific implementation of QPADM-slack
   while(((distance > eps)|(distance == 0))&&(iteration < maxstep)){
@@ -328,6 +335,9 @@ py::tuple fullthreadedparaQPADMslackcpp(string pathToX, string pathToY, int K=10
     time = time + time_reduce;
 
     auto start_map = std::chrono::high_resolution_clock::now();
+
+    if(save_beta_history) beta_history = arma::join_slices(beta_history, beta);
+
     //update xi, eta, z, u and v (see details in the slides), this is the second part we want to be parallelized
     for(int k = 0; k < K; k++){
       start_map = std::chrono::high_resolution_clock::now();
@@ -367,68 +377,45 @@ py::tuple fullthreadedparaQPADMslackcpp(string pathToX, string pathToY, int K=10
 
     lossini = loss, zini = z, uini = u, etaini = eta, vini=v;
     iteration = iteration+1;
-  }  
+  }
+
+  auto finish_iterations = std::chrono::high_resolution_clock::now();
+  std::chrono::duration<double> elapsed_iterations = finish_iterations - start_iterations;
+  time_iterations = elapsed_iterations.count();
+
+  auto finish_total_time = std::chrono::high_resolution_clock::now();
+  std::chrono::duration<double> elapsed_finish = finish_total_time - start_total_time;
+  time_total = elapsed_finish.count();
+
   //compare to beta to the saved R script
   //arma::vec estimates_from_r = readCSV("../data/beta_" + std::to_string(K) +"_base");
   //cout << "\n" << arma::approx_equal(estimates_from_r, beta, "absdiff", 0.01) << " approx_equal for K " << K << "\n";
   //cout << "\n" << time << " with that as the time\n";
 
-  return py::make_tuple(time, carma::mat_to_arr(beta, true), iteration);
-}
+  arma::rowvec times(5); 
+  times(0) = time;              //this is based on the placement in the original algo
+  times(1) = time_total;       //this is a basic time from function start to finish
+  times(2) = time_loading_data;//checks the time taken to read in the input files
+  times(3) = time_inversion; //time to invert the initial tmp cube
+  times(4) = time_iterations; //time to fully iterate through the main loop
 
-double paraQPADMslackcpp(py::array_t<double> inputx, int K=10, double tau=0.7, string penalty="scad", double a=3.7, double lambda=20, double pho = 5, int maxstep = 1000, double eps = 0.001, bool intercept = false){
-  arma::mat x = readCSV("../data/X.small");
-
-  //calculate the number of rows and columns of the matrix x by using the Rcpp functions .n_rows and .n_cols, and put the obtained values into the newly defined integer variables n and p, respectively
-  //note: if the model contains an intercept, we should first insert a column ones into the matrix x (in the left) and then calculate the number of columns of x
-  //the integer nk calculated by n/K is then the number of rows of the kth partition of the matrix x
-  int n = x.n_rows, nk = n/K;
-  int p = x.n_cols;
-  //initialize the variables for recording the computational time of the algorithm
-  double max_prep = 0, time_reduce = 0, max_map = 0, time = 0;
-  //variable distance is the distance of the objective at two successive iterations (double), we initialize it by 1
-  //lossini is the objective value in the previous iteration (double)
-  //loss is the objective value in the current iteration (double)
-  double distance = 1, lossini = 0, loss = 0;
-
-  //in updating z, we need to calculate the inversion of K matrices, these matrices are fixed, thus we conduct this process before before implement the iterative algorithm
-  //tmp is a 3-dimensional array, it contains K elements, each element is a p*p matrix, which stores a matrix inversion, we initialize it with zeros
-  //in reality, these matrix inversions can be conducted in parallel, as each inversion only based on a partition of x, here we implement this by a "for" loop, i.e., it is sequential now. This is the first part we want to be parallelized
-  //xk: the kth partition of x (matrix)
-  arma::cube tmp = arma::zeros<arma::cube>(p,p,K);
-
-  auto start_prep = std::chrono::high_resolution_clock::now();
-  for(int k = 0; k < K; k++){
-    arma::mat tmp2, xk = x.rows(k*nk,k*nk+nk-1);
-    //record the starting time of the calculation
-    if(nk > p)
-      tmp2 = inv(arma::eye(p,p)+xk.t()*xk);
-    else tmp2 = arma::eye(p,p)-xk.t()*inv(arma::eye(nk,nk)+xk*xk.t())*xk;
-    //record the starting time of the calculation
-    auto finish_prep = std::chrono::high_resolution_clock::now();
-    //calculate the time cost
-    std::chrono::duration<double> elapsed_prep = finish_prep - start_prep;
-    //max_prep records the maximum time of the K matrix inversions
-    if(elapsed_prep.count()>max_prep) max_prep = elapsed_prep.count();
-    //put the kth matrix inversion result into the kth component of tmp
-    tmp.slice(k) = tmp2;
-  }
-  time = time + max_prep;
-
-  return time;
+  return py::make_tuple(carma::row_to_arr(times, true), carma::mat_to_arr(beta, true), iteration, carma::cube_to_arr(beta_history, true));
 }
 
 py::tuple matrixReturnTest(){
-    arma::mat x = readCSV("../data/X.small");
+    arma::vec beta(1000, fill::ones);
+    arma::vec beta_two(1000, fill::zeros);
+    arma::vec beta_three(1000, fill::randu);
+    arma::cube to_return = arma::join_slices(beta,beta_two);
 
+     to_return = arma::join_slices(to_return, beta_three);
     // convert to Numpy array and copy out
-    return py::make_tuple("123", carma::mat_to_arr(x, true));
+    return py::make_tuple(carma::cube_to_arr(to_return, true));
 }
 
 PYBIND11_MODULE(qpadmslack, m) {
     m.doc() = "pybind11 qpadmslack plugin"; //option module docstring
 
-    m.def("paraQPADMslackcpp", paraQPADMslackcpp, "a function that will create the basic the temp arrays");
     m.def("fullthreadedparaQPADMslackcpp",  fullthreadedparaQPADMslackcpp, "a function that will create the basic the temp arrays");
     m.def("matrixReturnTest", matrixReturnTest, "this is a test to see how to return a matrix to Python");
 }
