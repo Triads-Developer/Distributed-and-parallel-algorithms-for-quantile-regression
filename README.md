@@ -43,7 +43,8 @@ In terms of testing, I ran the original implementation and exported the results 
 
 # Compilation
 I compiled the C++ with the following command:
-clang++ -O3 -shared -std=c++17 -fPIC $(python3 -m pybind11 --includes) qpadmslack.cpp -o qpadmslack$(python3-config --extension-suffix) -Wl,-undefined,dynamic_lookup -I /Library/Frameworks/R.framework/Versions/4.3-arm64/Resources/library/RcppArmadillo/include/ -I /usr/local/include/carma/ -I /opt/homebrew/lib/python3.11/site-packages/numpy/core/include
+
+clang++ -O3 -shared -std=c++17 -fPIC $(python3 -m pybind11 --includes) qpadmslack.cpp -o qpadmslack\\$(python3-config --extension-suffix) -Wl,-undefined,dynamic_lookup -I /Library/Frameworks/R.framework/Versions/4.3-arm64/Resources/library/RcppArmadillo/include/ -I /usr/local/include/carma/ -I /opt/homebrew/lib/python3.11/site-packages/numpy/core/include
 
 # Couple notes on compilation 
 I manually included 3 libraries which may differ in your
