@@ -47,9 +47,27 @@ I compiled the C++ with the following command:
 clang++ -O3 -shared -std=c++17 -fPIC $(python3 -m pybind11 --includes) qpadmslack.cpp -o qpadmslack\\$(python3-config --extension-suffix) -Wl,-undefined,dynamic_lookup -I /Library/Frameworks/R.framework/Versions/4.3-arm64/Resources/library/RcppArmadillo/include/ -I /usr/local/include/carma/ -I /opt/homebrew/lib/python3.11/site-packages/numpy/core/include
 
 # Couple notes on compilation 
-I manually included 3 libraries which may differ in your
+I installed numpy via brew:
+'brew install numpy'
+
+I install pybind11 via pip3:
+'pip3 install pybind11'
+
+I ran 
+
+'$(python3 -m pybind11 --includes)'
+
+and
+
+'$(python3-config --extension-suffix)'
+
+to make sure that the python3 commands within the build statement are set up.
+
+I manually included 3 libraries which may differ from your
 system: Armadillo (here I just used the Armadillo provided by R), Carma (to
 translate from C++ to Python), and Numpy.
+
+You will probably have to point to your system's version of Numpy for numpy related files that are otherwise missed in the repo's version.
 
 I used clang++ instead of G++ or C++ or gcc because an initial attempt to use
 c++17 features. I don't think it's required though.
