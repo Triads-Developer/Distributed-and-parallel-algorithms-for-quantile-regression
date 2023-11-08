@@ -38,51 +38,74 @@ In the R implementation of this algorithm, Rcpp is used to export the C++
 function into R. In Python, the equivalent functionality is achieved with
 Pybind11.
 
+Within this project, there are two folders, python and R, which has the parallel 
+implementations for each language.
+
 # Testing
-In terms of testing, I ran the original implementation and exported the results (Beta) to a file. In the new Python/C++, that file was read and compared to the results generated Beta. 
+In terms of testing, I ran the original implementation and exported the results (Beta) to a file.
+In the new Python/C++, that file was read and compared to the results generated Beta. 
 
 # Compilation
-I compiled the C++ with the following command:
+Each of the languages, R and Python, require different steps to compile.
 
-clang++ -O3 -shared -std=c++17 -fPIC $(python3 -m pybind11 --includes) qpadmslack.cpp -o qpadmslack\\$(python3-config --extension-suffix) -Wl,-undefined,dynamic_lookup -I /Library/Frameworks/R.framework/Versions/4.3-arm64/Resources/library/RcppArmadillo/include/ -I /usr/local/include/carma/ -I /opt/homebrew/lib/python3.11/site-packages/numpy/core/include
+#R
+Refer to 'R/currentExample.R' for a specific example but it's simple a matter of
+including the following line in your code:
 
-# Couple notes on compilation 
-I installed numpy via brew:
-'brew install numpy'
+Rcpp::sourceCpp("src/qpadmslack.cpp")
 
-I install pybind11 via pip3:
+R will take care of the rest; you should be able to utilize the function exported
+by qpadmslack.cpp. See Rcpp's documentation for more information about the
+specifics.
+
+#Python
+Python is a little more complex. You have to manually compile the C++ code then
+import that into Python (manually or via a script).
+
+There are four dependencies:
+RcppArmadillo
+carma
+pybind11
+numpy
+
+
+You can use the RcppArmadillo and carma copies found in 'python/src/libraries'.
+You can certainly provide your own, and you ought to to make sure you're using the 
+most current versions but if, for whatever reason, you can't or don't want to, they
+are here.
+
+To install pybind, use pip3:
 'pip3 install pybind11'
 
-I ran 
+See pybind11's documentation for more info.
 
-'$(python3 -m pybind11 --includes)'
+I'd recommend installing numpy via brew:
 
-and
+I compiled the C++ with the following command:
+'brew install numpy'
 
-'$(python3-config --extension-suffix)'
+Once you have all the dependencies met the compilation statement will look like this:
 
-to make sure that the python3 commands within the build statement are set up.
-
-I manually included 3 libraries which may differ from your
-system: Armadillo (here I just used the Armadillo provided by R), Carma (to
-translate from C++ to Python), and Numpy.
-
-You will probably have to point to your system's version of Numpy for numpy related files that are otherwise missed in the repo's version.
+clang++ -O3 -shared -std=c++17 -fPIC $(python3 -m pybind11 --includes) qpadmslack.cpp -o qpadmslack$(python3-config --extension-suffix) -Wl,-undefined,dynamic_lookup -I libraries/RcppArmadillo -I libraries/carma -I /opt/homebrew/lib/python3.11/site-packages/numpy/core/include
 
 I used clang++ instead of G++ or C++ or gcc because an initial attempt to use
 c++17 features. I don't think it's required though.
 The compiled project, however, is included here though so you might very well
 just be able to run it once you clone this repo.
 
-#How to Run
-To run this Python/C++ version of the algorithm, it can be can be performed with the following command:
+#How to Run R
+As described in the above section on compilation, once R compiles the C++ file, 
+the exported function 'paraQPADMslack' will be ready to use throughout the 
+workspace.
+
+#How to Run Python
+To run the Python/C++ version of the algorithm, it can be can be performed with the following command:
 python3 python-qpadmslack.py -x <path_to_input_file_X> -y <path_to_input_file_Y>
 
 You can also run with a -h flag to see a reminder too.
 python3 python-qpadmslack.py -h
 
-In order to generate a test input array, modify N and p in the
-R/TmpMatrixSetup.R
+In order to generate a test input array, modify N and p in 'R/R/TmpMatrixSetup.R'
 
 This will create two input files called X and Y these can be moved or referenced
 when calling the above python script.
@@ -92,13 +115,13 @@ The input to this script are two files, X and Y. These files are exported matric
 The Python script could be made to generate the matrices but, for the time
 being, the focus of our work was on the algorithm itself.
 
-#Output
+#Python Output 
 The output of the function is a Python tuple containing three times:
 Time - this is the C++ clock of the time to process the input
 Beta - a matrix containing Beta
 Iterations - the number of iterations required by the algorithm
 
-#Potential points of change
+#Potential points of change for Python
 The current input matrix X is to be read in - we might want to overload the
 function to accept an input matrix
 
