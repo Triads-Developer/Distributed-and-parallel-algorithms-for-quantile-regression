@@ -1,7 +1,6 @@
 # Distributed-and-parallel-algorithms-for-quantile-regression
 
-Our goal is to develop a software platform for big data and quantile regression analysis as an R
-package or Python library. 
+Our goal is to develop a software platform for big data and quantile regression analysis as an R package or Python library. 
 
 The current algorithm, written in C++ and R, performs it's function but we aim
 to develop the functionality to allow for, one, larger datasets, and, two, a
@@ -20,8 +19,8 @@ processing.
 
 As the core functionality of the algorithm was written in C++, that was the
 first target. Additionally, the optimization provided by C++'s compilation optimization and Armadillo made it a more efficient solution rather than rewriting the algorithm in R or C++. 
-We accomplished a C++ focused performance gain, by changing the iterative processing into a
-series of multi-threaded function calls where the number of threads is equal to K. As threads can be system dependant, there is a slight risk of suboptimal performance. It won't break but it won't be as optimized as if we used the ideal number of threads for a given system. 
+
+We accomplished a C++ focused performance gain, by changing the iterative processing into a series of multi-threaded function calls where the number of threads is equal to K. As threads can be system dependant, there is a slight risk of suboptimal performance. It won't break but it won't be as optimized as if we used the ideal number of threads for a given system. 
 
 The next step was to determine if there would be a major performance gain by
 exporting the C++ algorithm to Python vs R.
@@ -48,26 +47,25 @@ In the new Python/C++, that file was read and compared to the results generated 
 # Compilation
 Each of the languages, R and Python, require different steps to compile.
 
-#R
+## R
 Refer to 'R/currentExample.R' for a specific example but it's simple a matter of
 including the following line in your code:
-
-Rcpp::sourceCpp("src/qpadmslack.cpp")
+`Rcpp::sourceCpp("src/qpadmslack.cpp")`
 
 R will take care of the rest; you should be able to utilize the function exported
 by qpadmslack.cpp. See Rcpp's documentation for more information about the
 specifics.
 
-#Python
+## Python
+
 Python is a little more complex. You have to manually compile the C++ code then
 import that into Python (manually or via a script).
 
 There are four dependencies:
-RcppArmadillo
-carma
-pybind11
-numpy
-
+ 1. RcppArmadillo 
+ 2. carma
+ 3. pybind11
+ 4. numpy
 
 You can use the RcppArmadillo and carma copies found in 'python/src/libraries'.
 You can certainly provide your own, and you ought to to make sure you're using the 
@@ -75,57 +73,63 @@ most current versions but if, for whatever reason, you can't or don't want to, t
 are here.
 
 To install pybind, use pip3:
-'pip3 install pybind11'
+`pip3 install pybind11`
 
-See pybind11's documentation for more info.
+See [pybind11's documentation](https://pybind11.readthedocs.io/en/stable/installing.html) for more info.
 
 I'd recommend installing numpy via brew:
-
-I compiled the C++ with the following command:
-'brew install numpy'
+`brew install numpy`
 
 Once you have all the dependencies met the compilation statement will look like this:
 
-clang++ -O3 -shared -std=c++17 -fPIC $(python3 -m pybind11 --includes) qpadmslack.cpp -o qpadmslack$(python3-config --extension-suffix) -Wl,-undefined,dynamic_lookup -I libraries/RcppArmadillo -I libraries/carma -I /opt/homebrew/lib/python3.11/site-packages/numpy/core/include
+    clang++ -O3 -shared -std=c++17 -fPIC $(python3 -m pybind11 --includes) qpadmslack.cpp -o qpadmslack$(python3-config --extension-suffix) -Wl,-undefined,dynamic_lookup -I libraries/RcppArmadillo -I libraries/carma -I /opt/homebrew/lib/python3.11/site-packages/numpy/core/include
 
 I used clang++ instead of G++ or C++ or gcc because an initial attempt to use
 c++17 features. I don't think it's required though.
 The compiled project, however, is included here though so you might very well
 just be able to run it once you clone this repo.
 
-#How to Run R
+## How to Run R
+
 As described in the above section on compilation, once R compiles the C++ file, 
-the exported function 'paraQPADMslack' will be ready to use throughout the 
+the exported function `paraQPADMslack` will be ready to use throughout the 
 workspace.
 
-#How to Run Python
+## How to Run Python
+
 To run the Python/C++ version of the algorithm, it can be can be performed with the following command:
-python3 python-qpadmslack.py -x <path_to_input_file_X> -y <path_to_input_file_Y>
 
-You can also run with a -h flag to see a reminder too.
-python3 python-qpadmslack.py -h
+    python3 python-qpadmslack.py -x <path_to_input_file_X> -y <path_to_input_file_Y>
 
-In order to generate a test input array, modify N and p in 'R/R/TmpMatrixSetup.R'
+You can also run with a `-h` flag to see a reminder too.
+
+    python3 python-qpadmslack.py -h
+
+In order to generate a test input array, modify N and p in `R/R/TmpMatrixSetup.R`
 
 This will create two input files called X and Y these can be moved or referenced
 when calling the above python script.
 
-#Input
+## Input
+
 The input to this script are two files, X and Y. These files are exported matrices, X and Y, which are generated in the original R script.
 The Python script could be made to generate the matrices but, for the time
 being, the focus of our work was on the algorithm itself.
 
-#Python Output 
+## Python Output
+
 The output of the function is a Python tuple containing three times:
 Time - this is the C++ clock of the time to process the input
 Beta - a matrix containing Beta
 Iterations - the number of iterations required by the algorithm
 
-#Potential points of change for Python
+## Potential points of change for Python
+
 The current input matrix X is to be read in - we might want to overload the
 function to accept an input matrix
 
-#Some related resources
+## Heading
+Some related resources
 https://github.com/RUrlus/carma
 https://pybind11.readthedocs.io/en/stable/index.html
 https://arma.sourceforge.net/docs.html
