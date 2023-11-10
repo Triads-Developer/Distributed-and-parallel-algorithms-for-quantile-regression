@@ -1,2 +1,0 @@
-/Users/gregoryporter/Projects/Distributed-and-parallel-algorithms-for-quantile-regression/python/CMakeFiles/edit_cache.dir
-/Users/gregoryporter/Projects/Distributed-and-parallel-algorithms-for-quantile-regression/python/CMakeFiles/rebuild_cache.dir
