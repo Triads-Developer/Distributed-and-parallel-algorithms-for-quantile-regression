@@ -82,7 +82,7 @@ I'd recommend installing numpy via Brew:
 
 Once you have all the dependencies met the compilation statement will look like this:
 
-    clang++ -O3 -shared -std=c++17 -fPIC $(python3 -m pybind11 --includes) qpadmslack.cpp -o qpadmslack$(python3-config --extension-suffix) -Wl,-undefined,dynamic_lookup -I libraries/RcppArmadillo -I libraries/carma -I /opt/homebrew/lib/python3.11/site-packages/numpy/core/include
+    clang++ -O3 -shared -std=c++17 -fPIC $(python3 -m pybind11 --includes) qpadmslack.cpp -o qpadmslack$(python3-config --extension-suffix) -Wl,-undefined,dynamic_lookup -I /opt/anaconda3/envs/qpadmslack/lib/python3.12/site-packages/numpy/_core/include/ -I libraries/carma -I libraries/RcppArmadillo
 
 I used clang++ instead of G++ or C++ or gcc because of an initial attempt to use
 c++17 features. I don't think it's required though.
