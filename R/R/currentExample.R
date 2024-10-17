@@ -5,7 +5,7 @@ library(ff)
 Sys.setenv('R_MAX_VSIZE'=32000000000)
 registerDoParallel(cores=8)
 registerDoMC(cores = 8)
-Rcpp::sourceCpp("src/qpadmslack.cpp")
+Rcpp::sourceCpp("../src/qpadmslack.cpp")
 N = 10000
 p = 100
 tau = 0.7
